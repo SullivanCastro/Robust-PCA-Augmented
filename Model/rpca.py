@@ -32,24 +32,72 @@ class Robust_PCA_Augmented():
         return np.sign(X) * np.maximum(np.abs(X) - tau, 0)
     
 
-    def _singular_value_thresholding(self, X, tau):
+    def _singular_value_thresholding(self, X: np.array, tau: float) -> np.array:
+        """
+        Singular value thresholding operator
+
+        Parameters
+        ----------
+        X : np.array
+            Input matrix
+        tau : float
+
+        Returns
+        -------
+        np.array
+            Singular value thresholded matrix
+        """
         U, S, V = np.linalg.svd(X, full_matrices=False)
         self.D = np.dot(U, np.dot(np.diag(self._shrink_operator(S, tau)), V))
         return self.D
 
 
-    def _compute_L_next(self):
+    def _compute_L_next(self) -> np.array:
+        """
+        Compute the next L matrix
+
+        Returns
+        -------
+        np.array
+            L matrix
+        """
         return self._singular_value_thresholding(self.M - self.S + self.Y/self.mu, self.mu)
     
 
-    def _compute_S_next(self):
+    def _compute_S_next(self) -> np.array:
+        """
+        Compute the next S matrix
+
+        Returns
+        -------
+        np.array
+            S matrix
+        """
         return self._shrink_operator(self.M - self.L + self.Y/self.mu, self._lambda*self.mu) 
     
 
-    def _compute_Y_next(self):
+    def _compute_Y_next(self) -> np.array:
+        """
+        Compute the next Y matrix
+        
+        Returns
+        -------
+        np.array
+            Y matrix
+        """
         return self.Y + self.mu * (self.M - self.L - self.S)
     
-    def fit(self):
+    def fit(self) -> np.array:
+        """
+        Fit the model by sperating outliers (Sparse matrix) and low-rank matrix (L matrix)
+
+        Returns
+        -------
+        np.array
+            L matrix
+        np.array
+            S matrix
+        """
         self.S ,self.Y = np.zeros_like(self.M), np.zeros_like(self.M)
         while self.delta < np.linalg.norm(self.M - self.L - self.S) / np.linalg.norm(self.M):
             self.L = self._compute_L_next()
