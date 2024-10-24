@@ -1,4 +1,5 @@
 import numpy as np
+from pca import custom_PCA
 
 class Robust_PCA_Augmented():
 
@@ -121,25 +122,24 @@ if __name__ == "__main__":
     X = StandardScaler().fit_transform(X)
     
     import matplotlib.pyplot as plt
-    from sklearn.decomposition import PCA
-
 
     plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
 
     plt.subplot(1, 2, 1)
     plt.title("PCA n=2")
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X)
+    pca = custom_PCA(n_components=2)
+    X_pca = pca.fit(X)
     plt.scatter(X_pca[:, 0], X_pca[:, 1], c=np.where(y=="M", "red", "blue"))
     plt.xlabel("Principal Component Analysis 1")
     plt.ylabel("Principal Component Analysis 2")
 
     plt.subplot(1, 2, 2)
     plt.title("RPCA n=2")
+
     rpca_augmented = Robust_PCA_Augmented(X)
     L, _ = rpca_augmented.fit()
-    pca = PCA(n_components=2)
-    L_pca = pca.fit_transform(L)
+    pca = custom_PCA(n_components=2)
+    L_pca = pca.fit(L)
     plt.scatter(L_pca[:, 0], L_pca[:, 1], c=np.where(y=="M", "red", "blue"))
     plt.xlabel("Principal Component Analysis 1")
     plt.ylabel("Principal Component Analysis 2")
