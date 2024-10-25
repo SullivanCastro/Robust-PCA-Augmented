@@ -1,7 +1,7 @@
 import numpy as np
 from pca import custom_PCA
 
-class Robust_PCA_Augmented():
+class Robust_PCA():
 
     def __init__(self, M, delta=1e-7) -> None:
         self.S           = 0
@@ -9,7 +9,7 @@ class Robust_PCA_Augmented():
         self.M           = M
         self.n1, self.n2 = M.shape
         self.mu          = (self.n1*self.n2) / (4*np.linalg.norm(M, 1))
-        self._lambda     = 1/np.sqrt(self.n1)
+        self._lambda     = 1/np.sqrt(np.max(M.shape))
         self.D           = self._singular_value_thresholding(M, 1/self.mu)
         self.delta       = delta
         self.L           = np.zeros_like(M)
@@ -117,31 +117,45 @@ if __name__ == "__main__":
     X = breast_cancer_wisconsin_diagnostic.data.features 
     y = breast_cancer_wisconsin_diagnostic.data.targets.squeeze()
 
+    # Create outliers
+    idx_outliers = np.random.randint(0, len(y), len(y)//100) 
+    y[idx_outliers] = np.where(y[idx_outliers] == "M", "B", "M")
+
     # standardize data
     from sklearn.preprocessing import StandardScaler
     X = StandardScaler().fit_transform(X)
     
     import matplotlib.pyplot as plt
 
-    plt.subplots(nrows=1, ncols=2, figsize=(10, 5))
+    plt.subplots(nrows=1, ncols=3, figsize=(10, 5))
 
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.title("PCA n=2")
     pca = custom_PCA(n_components=2)
     X_pca = pca.fit(X)
-    plt.scatter(X_pca[:, 0], X_pca[:, 1], c=np.where(y=="M", "red", "blue"))
+    plt.scatter(X_pca[:, 0], X_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.5)
     plt.xlabel("Principal Component Analysis 1")
     plt.ylabel("Principal Component Analysis 2")
 
-    plt.subplot(1, 2, 2)
-    plt.title("RPCA n=2")
+    rpca = Robust_PCA(X)
+    L, S = rpca.fit()
 
-    rpca_augmented = Robust_PCA_Augmented(X)
-    L, _ = rpca_augmented.fit()
+    # Plot Low Rank Matrix PCA
+    plt.subplot(1, 3, 2)
+    plt.title("RPCA Low-Rank matrix n=2")
     pca = custom_PCA(n_components=2)
     L_pca = pca.fit(L)
-    plt.scatter(L_pca[:, 0], L_pca[:, 1], c=np.where(y=="M", "red", "blue"))
+    plt.scatter(L_pca[:, 0], L_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.5, label="Low Rank Matrix")
     plt.xlabel("Principal Component Analysis 1")
     plt.ylabel("Principal Component Analysis 2")
 
+    # Plot Sparse Matrix PCA
+    plt.subplot(1, 3, 3)
+    S_pca = pca.fit(S)
+    plt.title("RPCA Sparse matrix n=2")
+    plt.scatter(S_pca[:, 0], S_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.3, label="Sparse Matrix")
+    plt.xlabel("Principal Component Analysis 1")
+    plt.ylabel("Principal Component Analysis 2")
+
+    plt.tight_layout()
     plt.show()
