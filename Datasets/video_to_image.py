@@ -14,6 +14,7 @@ def save_images_from_video(path: str, image: np.array):
     """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = Image.fromarray(image.astype('uint8'), 'RGB')
+    image = image.resize((320, 180), Image.LANCZOS)
     image.save(path)
     
 
@@ -39,9 +40,9 @@ def read_videos(path, time_interval=1):
         if not ret:
             break
         frame_numb = cap.get(cv2.CAP_PROP_POS_FRAMES)
-        if frame_numb % (time_interval * fps) == 0:
-            save_images_from_video(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/Cyprien/Cyprien_{frame_numb}.jpg", frame)
+        if frame_numb % int(time_interval * fps) == 0:
+            save_images_from_video(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/City/City_{frame_numb}.jpg", frame)
     cap.release()
     return np.array(frames)
 
-read_videos(f"/Users/sullivancastro/Downloads/Cyprien_Video.mp4")
+read_videos(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/Videos/City.mp4", time_interval=1)

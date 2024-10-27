@@ -3,6 +3,9 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
+
+import sys
+sys.path.append("/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented")
 from model_custom_pca.rpca import Robust_PCA
 
 def load_dataset(path:str) -> np.array:
@@ -19,14 +22,11 @@ def load_dataset(path:str) -> np.array:
     np.array
         Dataset
     """
-    datasets = np.zeros(shape=(len(os.listdir(path)), 720*1280))
+    datasets = np.zeros(shape=(100, 320*180))
     for raw, dir, files in os.walk(path):
-        for idx, file in enumerate(files):
+        for idx, file in enumerate(files[:100]):
             if file.endswith('.jpg'):
                 image = cv2.imread(os.path.join(raw, file), cv2.IMREAD_GRAYSCALE)
-                # plt.figure()
-                # plt.imshow(Image.fromarray(image, mode="L"), cmap="gray")
-                # plt.show()
                 datasets[idx] = image.flatten()
     return datasets
 
@@ -36,8 +36,11 @@ print(dataset_cyprien.shape)
 
 rpca = Robust_PCA(dataset_cyprien)
 L, S = rpca.fit()
-image = L[0].reshape((720, 1280)).astype(np.uint8)
+image = L[0].astype(np.uint8).reshape((180, 320)).astype(np.uint8)
+image = Image.fromarray(image, mode="L")
 
+image.save("/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/results.png")
 plt.figure(figsize=(10, 5))
-plt.imshow(Image.fromarray(image, mode="L"), cmap="gray")
+plt.imshow(image, cmap="gray")
 plt.title("Low-rank matrix")
+plt.show()

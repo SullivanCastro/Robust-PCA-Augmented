@@ -1,5 +1,5 @@
 import numpy as np
-from pca import custom_PCA
+from model_custom_pca.pca import custom_PCA
 
 class Robust_PCA():
 
@@ -88,7 +88,7 @@ class Robust_PCA():
         """
         return self.Y + self.mu * (self.M - self.L - self.S)
     
-    def fit(self) -> np.array:
+    def fit(self, max_iter=100) -> np.array:
         """
         Fit the model by sperating outliers (Sparse matrix) and low-rank matrix (L matrix)
 
@@ -100,10 +100,12 @@ class Robust_PCA():
             S matrix
         """
         self.S ,self.Y = np.zeros_like(self.M), np.zeros_like(self.M)
-        while self.delta < np.linalg.norm(self.M - self.L - self.S) / np.linalg.norm(self.M):
+        cpt = 0 
+        while self.delta < np.linalg.norm(self.M - self.L - self.S) / np.linalg.norm(self.M) and cpt < max_iter:
             self.L = self._compute_L_next()
             self.S = self._compute_S_next()
             self.Y = self._compute_Y_next()
+            cpt += 1
         return self.L, self.S
     
 
