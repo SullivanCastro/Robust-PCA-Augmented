@@ -1,5 +1,12 @@
+import sys
+import os
 import numpy as np
-from pca import custom_PCA
+
+# Add parent directory to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from model_custom_pca.pca import custom_PCA
+from model_custom_pca.rpca_augmented import Robust_PCA_augmented
 
 class Robust_PCA():
 
@@ -150,12 +157,25 @@ if __name__ == "__main__":
     plt.ylabel("Principal Component Analysis 2")
 
     # Plot Sparse Matrix PCA
+    # plt.subplot(1, 3, 3)
+    # S_pca = pca.fit(S)
+    # plt.title("RPCA Sparse matrix n=2")
+    # plt.scatter(S_pca[:, 0], S_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.3, label="Sparse Matrix")
+    # plt.xlabel("Principal Component Analysis 1")
+    # plt.ylabel("Principal Component Analysis 2")
+
+    rpca_augmented = Robust_PCA_augmented(X)
+    L, S = rpca_augmented.fit()
+
     plt.subplot(1, 3, 3)
-    S_pca = pca.fit(S)
-    plt.title("RPCA Sparse matrix n=2")
-    plt.scatter(S_pca[:, 0], S_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.3, label="Sparse Matrix")
+    plt.title("RPCA Augmented Low-Rank matrix n=2")
+    pca = custom_PCA(n_components=2)
+    
+    L_pca = pca.fit(L)
+    plt.scatter(L_pca[:, 0], L_pca[:, 1], c=np.where(y=="M", "red", "blue"), alpha=0.5, label="Low Rank Matrix")
     plt.xlabel("Principal Component Analysis 1")
     plt.ylabel("Principal Component Analysis 2")
+
 
     plt.tight_layout()
     plt.show()
