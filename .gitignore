@@ -2,3 +2,6 @@
 $cpython*
 *DS_Store*
 *pycache*
+*.jpg*
+*.png*
+*.mp4*
