@@ -21,6 +21,8 @@ class Robust_PCA_augmented():
         self.Z2          = self.W - self.L
     
     def laplacian(self, X):
+        # useful because the laplaician matrix will be different
+        # for corrupted data, to be computed manually for these datasets
         """
         Compute the laplacian matrix
 
@@ -36,14 +38,8 @@ class Robust_PCA_augmented():
         """
         vectorized_samples = X.reshape(X.shape[0], -1)
 
-        # Pairwise distances
-        omega = np.zeros((vectorized_samples.shape[0], vectorized_samples.shape[0]))
-        for i in range(vectorized_samples.shape[0]):
-            for j in range(vectorized_samples.shape[0]):
-                omega[i, j] = np.linalg.norm(vectorized_samples[i] - vectorized_samples[j])
-        
         # Adjacency matrix
-        A = np.exp(-(omega - np.min(omega)) ** 2 / 0.05)
+        A = np.exp(-np.linalg.norm(vectorized_samples[:, None] - vectorized_samples, axis=-1) ** 2 / 0.05)
 
         # Degree matrix
         D = np.diag(np.sum(A, axis=1))
@@ -170,4 +166,5 @@ class Robust_PCA_augmented():
             print(f"Iteration {self.k} - P1: {P1.shape} - P2: {P2.shape} - P3: {P3.shape}, Z1: {self.Z1.shape}, Z2: {self.Z2.shape}")
 
         return self.L, self.S
+
 
