@@ -97,7 +97,7 @@ class VideoLoader:
     
 
     @staticmethod
-    def remove_background(dataset_name: str, plot: bool = False) -> None:
+    def remove_background(dataset_name: str, width: int = 320, height: int = 180, plot: bool = False) -> None:
         """
         Remove the background from the video
 
@@ -107,6 +107,10 @@ class VideoLoader:
             Dataset
         dataset_name : str
             Name of the dataset
+        width : int, optional
+            Width of the image, by default 320
+        height : int, optional
+            Height of the image, by default 180
         plot : bool, optional
             Plot the background image, by default False
         
@@ -122,7 +126,7 @@ class VideoLoader:
         L, _ = rpca.fit()
 
         # Generate the mean background image
-        image = L.mean(axis=0).astype(np.uint8).reshape((180, 320)).astype(np.uint8)
+        image = L.mean(axis=0).astype(np.uint8).reshape((height, width)).astype(np.uint8)
         image = Image.fromarray(image, mode="L")
 
         # Save the image
