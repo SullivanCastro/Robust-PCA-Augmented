@@ -1,7 +1,8 @@
-*Cyprien*
+Datasets/*
 $cpython*
 *DS_Store*
 *pycache*
 *.jpg*
 *.png*
 *.mp4*
+*_copy*
