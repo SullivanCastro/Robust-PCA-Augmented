@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn.cluster import KMeans
+
 
 class custom_PCA():
 
@@ -63,3 +65,35 @@ class custom_PCA():
         self.explained_variance_ = eig_values / eig_values.sum()
         self.components_ = eig_vectors[:self.n_components]
         return - self._project_data(X)
+    
+    def predict(self, k, X, true_labels):
+        """
+        Predict using PCA
+
+        Parameters
+        ----------
+        k : int
+            Number of clusters
+        X : np.array
+            Input matrix
+        true_labels : np.array
+            True labels
+        
+        Returns
+        -------
+        float
+            Clustering error
+        """
+        def calculate_min_error(X_proj, true_labels, k):
+            errors = [
+                np.mean(KMeans(n_clusters=k).fit(X_proj).labels_ != true_labels) * 100
+                for _ in range(10)
+            ]
+            return min(errors)
+
+        min_errors = [
+            calculate_min_error(custom_PCA(k).fit(X), true_labels, k)
+            for _ in range(10)
+        ]
+
+        return min(min_errors)
