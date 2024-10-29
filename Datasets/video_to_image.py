@@ -41,8 +41,8 @@ def read_videos(path, time_interval=1):
             break
         frame_numb = cap.get(cv2.CAP_PROP_POS_FRAMES)
         if frame_numb % int(time_interval * fps) == 0:
-            save_images_from_video(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/City/City_{frame_numb}.jpg", frame)
+            save_images_from_video(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/Cyprien/Cyprien_{frame_numb}.jpg", frame)
     cap.release()
     return np.array(frames)
 
-read_videos(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/Videos/City.mp4", time_interval=1)
+read_videos(f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Datasets/Videos/Cyprien.mp4", time_interval=10)
