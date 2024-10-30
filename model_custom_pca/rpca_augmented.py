@@ -3,12 +3,14 @@ from sklearn.cluster import KMeans
 from scipy.linalg import svd
 from scipy.sparse.csgraph import laplacian
 from sklearn.neighbors import kneighbors_graph
+from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics import pairwise_distances
 
 
 
 class Robust_PCA_augmented():
 
-    def __init__(self, X, gamma=2.8, n_neighbors=5) -> None:
+    def __init__(self, X, gamma=2.8) -> None:
         self.X           = X
         self.k           = 0
         self.gamma       = gamma
@@ -16,7 +18,7 @@ class Robust_PCA_augmented():
         self.r2          = 1
         self.epsilon     = 1e-6
         self._lambda     = 1/np.sqrt(np.max(X.shape))
-        self.n_neighbors = n_neighbors
+        self.n_neighbors = 10
 
         self.laplacien = self.laplacian_computation(X)
 
@@ -41,17 +43,24 @@ class Robust_PCA_augmented():
             Laplacian matrix
         """
         # Library based technique to compute the laplacian matrix, working a priori
-        knn_weights = kneighbors_graph(X, self.n_neighbors, mode='distance', include_self=True)
-        knn_weights_square = np.square(knn_weights.toarray())        
-        self.laplacien = laplacian(knn_weights_square, normed=False)
+        # knn_weights = kneighbors_graph(X, self.n_neighbors, mode='distance', include_self=True)
+        # knn_weights_square = np.square(knn_weights.toarray())        
+        # self.laplacien = laplacian(knn_weights_square, normed=False)
 
         # Manual technique to compute the laplacian matrix
         # Not working, A is identity matrix at the end of the computation
 
-        # vectorized_samples = X.reshape(X.shape[0], -1)
-        # A = np.exp(-np.linalg.norm(vectorized_samples[:, None] - vectorized_samples, axis=-1) ** 2 / 0.05)
-        # D = np.diag(np.sum(A, axis=1))
-        # self.laplacien = np.eye(A.shape[0]) - D ** -0.5 @ A @ D ** -0.5
+        distances = pairwise_distances(X, metric='euclidean')
+        nbrs = NearestNeighbors(n_neighbors=self.n_neighbors, algorithm='ball_tree').fit(X)
+        _, indices = nbrs.kneighbors(X)
+        A = np.zeros((X.shape[0], X.shape[0]))
+        for i in range(X.shape[0]):
+            for j in indices[i]:
+                A[i, j] = np.exp(-distances[i, j] ** 2 / 0.05)
+            A = (A + A.T) / 2
+        D = np.diag(A.sum(axis=1))        
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(D.diagonal() + 1e-10))
+        self.laplacien = np.eye(X.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
         return self.laplacien
 
     
@@ -185,7 +194,7 @@ class Robust_PCA_augmented():
         """
         U, S, V = np.linalg.svd(self.L, full_matrices=False)
         for i in range(10):
-            kmeans = KMeans(n_clusters=k, n_init=1).fit(U[:, :k])
+            kmeans = KMeans(n_clusters=k, n_init=10).fit(U[:, :k])
             if i == 0:
                 min_error = np.sum(kmeans.labels_ != true_labels) / len(true_labels) * 100
             else:
