@@ -16,7 +16,7 @@ class Robust_PCA_augmented():
         self.gamma       = gamma
         self.r1          = 1
         self.r2          = 1
-        self.epsilon     = 1e-6
+        self.epsilon     = 1e-100
         self._lambda     = 1/np.sqrt(np.max(X.shape))
         self.n_neighbors = 10
 
@@ -27,7 +27,10 @@ class Robust_PCA_augmented():
         self.S           = np.random.rand(*X.shape)
         self.Z1          = X - self.L - self.S
         self.Z2          = self.W - self.L
-    
+        self.P1          = self._nulcear_norm(self.L)
+        self.P2          = self._lambda * np.sum(np.abs(self.S))
+        self.P3          = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+
     def laplacian_computation(self, X):
         """
         Compute the laplacian matrix
@@ -101,6 +104,7 @@ class Robust_PCA_augmented():
         np.array
             Proximal operator for nuclear norm
         """
+
         U, S, V = svd(X, full_matrices=False)
         return np.dot(U, np.dot(np.diag(self._prox_l1_operator(S, coeff)), V))
 
@@ -115,8 +119,8 @@ class Robust_PCA_augmented():
         """
         H1 = self.X - self.S + self.Z1 / self.r1
         H2 = self.W + self.Z2 / self.r2
-        return self._prox_nuclear_operator((self.r1 * H1 + self.r2 * H2) / (self.r1 + self.r2), 1 / (self.r1 + self.r2))
-
+        return self._prox_nuclear_operator((self.r1 * H1 + self.r2 * H2) / (self.r1 + self.r2), 2 / (self.r1 + self.r2))
+    
     def _compute_W_next(self) -> np.array:
         """
         Compute the next W matrix
@@ -161,26 +165,23 @@ class Robust_PCA_augmented():
         np.array
             S matrix
         """
-        P1 = self._nulcear_norm(self.L)
-        P2 = self._lambda * np.sum(np.abs(self.S))
-        P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
 
-        P1_prev, P2_prev, P3_prev = P1, P2, P3
+        P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
         Z1_prev, Z2_prev = self.Z1, self.Z2
         
-        while self.k < 1 or (np.square(P1 - P1_prev) / np.square(P1_prev) > self.epsilon and  np.square(P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
-            P1_prev, P2_prev, P3_prev = P1, P2, P3
+        while self.k < 100 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and  np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
+            P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
             Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
             self.S = self._compute_S_next()
             self.W = self._compute_W_next()
             self.Z1 += self.r1 * (self.X - self.L - self.S)
             self.Z2 += self.r2 * (self.W - self.L)
-            P1 = self._nulcear_norm(self.L)
-            P2 = self._lambda * np.sum(np.abs(self.S))
-            P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+            self.P1 = self._nulcear_norm(self.L)
+            self.P2 = self._lambda * np.sum(np.abs(self.S))
+            self.P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
             self.k += 1
-            print(f"Iteration {self.k} - P1: {P1} - P2: {P2} - P3: {P3}, Z1: {self.Z1.shape}, Z2: {self.Z2.shape}")
+            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Z1: {self.Z1.shape}, Z2: {self.Z2.shape}")
         return self.L, self.S
 
     def pca_predict(self, k, true_labels):
