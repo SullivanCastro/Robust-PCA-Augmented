@@ -61,9 +61,9 @@ class Robust_PCA_augmented():
             for j in indices[i]:
                 A[i, j] = np.exp(-distances[i, j] ** 2 / 0.05)
             A = (A + A.T) / 2
-        D = np.diag(A.sum(axis=1))        
-        D_inv_sqrt = np.diag(1.0 / np.sqrt(D.diagonal() + 1e-10))
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1)))
         self.laplacien = np.eye(X.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
+        
         return self.laplacien
 
     
