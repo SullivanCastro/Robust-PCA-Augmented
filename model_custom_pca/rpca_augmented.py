@@ -16,7 +16,7 @@ class Robust_PCA_augmented():
         self.gamma       = gamma
         self.r1          = 1
         self.r2          = 1
-        self.epsilon     = 1e-100
+        self.epsilon     = 1e-7
         self._lambda     = 1/np.sqrt(np.max(X.shape))
         self.n_neighbors = 10
 
