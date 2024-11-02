@@ -10,7 +10,7 @@ from sklearn.metrics import pairwise_distances
 
 class Robust_PCA_augmented():
 
-    def __init__(self, X, gamma=2.8) -> None:
+    def __init__(self, X, gamma=10) -> None:
         self.X           = X
         self.k           = 0
         self.gamma       = gamma
