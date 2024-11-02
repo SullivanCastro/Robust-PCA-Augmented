@@ -10,7 +10,7 @@ DATASET_PATH = "/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust
 
 import sys
 sys.path.append("/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented")
-from model_custom_pca.rpca import Robust_PCA
+from model_custom_pca.rpca import Robust_PCA, Robust_PCA_augmented
 
 
 class VideoLoader:
@@ -97,12 +97,14 @@ class VideoLoader:
     
 
     @staticmethod
-    def remove_background(dataset_name: str, width: int = 320, height: int = 180, plot: bool = False) -> None:
+    def remove_background(method, dataset_name: str, width: int = 320, height: int = 180, plot: bool = False) -> None:
         """
         Remove the background from the video
 
         Parameters
         ----------
+        method : str
+            Method to remove the background among ["rpca", "rpca_augmented"]
         dataset : ArrayLike
             Dataset
         dataset_name : str
@@ -122,7 +124,12 @@ class VideoLoader:
         dataset = VideoLoader._load_dataset(os.path.join(DATASET_PATH, dataset_name))
 
         # Fit the Robust PCA model
-        rpca = Robust_PCA(dataset)
+        if method == "rpca":
+            rpca = Robust_PCA(dataset)
+        elif method == "rpca_augmented":
+            rpca = Robust_PCA_augmented(dataset)
+        else:
+            raise ValueError("Method not found")
         L, _ = rpca.fit()
 
         # Generate the mean background image
@@ -130,7 +137,7 @@ class VideoLoader:
         image = Image.fromarray(image, mode="L")
 
         # Save the image
-        image.save(os.path.join(DATASET_PATH, dataset_name, "results.png"))
+        image.save(os.path.join(DATASET_PATH.replace("Datasets", ""), "Results", rpca.__class__.__name__, f"results_{dataset_name}.png"))
 
         if plot:
             plt.figure(figsize=(10, 5))
@@ -140,5 +147,7 @@ class VideoLoader:
 
 
 if __name__ == "__main__":
-    VideoLoader.read_videos("Cyprien", time_interval=10)
-    VideoLoader.remove_background("Cyprien", plot=True)
+    for dataset_name in ["Street"]:
+        VideoLoader.read_videos(dataset_name, time_interval=0.5)
+        # VideoLoader.remove_background(method= 'rpca', dataset_name=dataset_name, plot=False)
+        VideoLoader.remove_background(method= 'rpca_augmented', dataset_name=dataset_name, plot=False)
