@@ -61,7 +61,7 @@ class Robust_PCA_augmented():
             for j in indices[i]:
                 A[i, j] = np.exp(-distances[i, j] ** 2 / 0.05)
             A = (A + A.T) / 2
-        D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1)))
+        D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1) + 1e-10))
         self.laplacien = np.eye(X.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
         
         return self.laplacien
@@ -169,7 +169,7 @@ class Robust_PCA_augmented():
         P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
         Z1_prev, Z2_prev = self.Z1, self.Z2
         
-        while self.k < 1000 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and  np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
+        while self.k < 1000 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
             P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
             Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
