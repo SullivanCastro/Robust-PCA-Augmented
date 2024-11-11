@@ -6,12 +6,14 @@ from sklearn.neighbors import kneighbors_graph
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import pairwise_distances
 import json
-
+from sklearn.preprocessing import StandardScaler
 
 
 class Robust_PCA_augmented():
 
     def __init__(self, M, gamma=0) -> None:
+        scaler = StandardScaler()
+        M = scaler.fit_transform(M)
         self.M           = M
         self.k           = 0
         self.gamma       = gamma
