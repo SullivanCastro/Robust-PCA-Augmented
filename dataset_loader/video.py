@@ -97,6 +97,24 @@ class VideoLoader:
     
 
     @staticmethod
+    def normalize_image(image: ArrayLike) -> ArrayLike:
+        """
+        Normalize the image
+
+        Parameters
+        ----------
+        image : np.array
+            Image to normalize
+
+        Returns
+        -------
+        np.array
+            Normalized image
+        """
+        return (image - np.min(image)) / (np.max(image) - np.min(image)) * 255
+    
+
+    @staticmethod
     def remove_background(method, dataset_name: str, width: int = 320, height: int = 180, plot: bool = False) -> None:
         """
         Remove the background from the video
@@ -130,24 +148,35 @@ class VideoLoader:
             rpca = Robust_PCA_augmented(dataset)
         else:
             raise ValueError("Method not found")
-        L, _ = rpca.fit()
+        L, S = rpca.fit()
 
         # Generate the mean background image
-        image = L.mean(axis=0).astype(np.uint8).reshape((height, width)).astype(np.uint8)
-        image = Image.fromarray(image, mode="L")
+        lr_image = VideoLoader.normalize_image(L.mean(axis=0)).astype(np.uint8).reshape((height, width)).astype(np.uint8)
+        lr_image = Image.fromarray(lr_image, mode="L")
+
+        # Generate the mean foreground image
+        s_image = S.mean(axis=0).astype(np.uint8).reshape((height, width)).astype(np.uint8)
+        s_image = Image.fromarray(s_image, mode="L")
 
         # Save the image
-        image.save(os.path.join(DATASET_PATH.replace("Datasets", ""), "Results", rpca.__class__.__name__, f"results_{dataset_name}.png"))
+        fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+
+        ax[0].imshow(lr_image, cmap="gray")
+        ax[0].set_title("Low-rank matrix")
+
+        ax[1].imshow(s_image, cmap="gray")
+        ax[1].set_title("Sparse matrix")
+
+        fig.savefig(os.path.join(DATASET_PATH.replace("Datasets", ""), "Results", rpca.__class__.__name__, f"results_{dataset_name}.png"))
 
         if plot:
-            plt.figure(figsize=(10, 5))
-            plt.imshow(image, cmap="gray")
-            plt.title("Low-rank matrix")
             plt.show()
+        
+        plt.close()
 
 
 if __name__ == "__main__":
     for dataset_name in ["Street"]:
-        VideoLoader.read_videos(dataset_name, time_interval=0.5)
+        # VideoLoader.read_videos(dataset_name, time_interval=5)
         # VideoLoader.remove_background(method= 'rpca', dataset_name=dataset_name, plot=False)
         VideoLoader.remove_background(method= 'rpca_augmented', dataset_name=dataset_name, plot=False)

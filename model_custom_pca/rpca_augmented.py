@@ -209,7 +209,7 @@ class Robust_PCA_augmented():
         P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
         Z1_prev, Z2_prev = self.Z1, self.Z2
         
-        while self.k < 300 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
+        while self.k < 100 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
             P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
             Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
