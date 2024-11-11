@@ -2,9 +2,16 @@ from utils import load_dataset, DATASET_PATH
 import numpy as np
 import os
 import json
+import re
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 import cv2
+# import svd
+from scipy.linalg import svd
 
-CORRUPTED_DATASET_PATH = f"/Users/sullivancastro/Desktop/MVA/Geometric Data Analysis/Robust-PCA-Augmented/Corrupted_Datasets"
+
+CORRUPTED_DATASET_PATH = f"C:\\MVA\\1er Semestre\\G Data Analysis\\RPCA\\Robust-PCA-Augmented\\Corrupted_Datasets"
 
 class Corrupted_Dataset_Loader:
     """
@@ -166,6 +173,7 @@ class Corrupted_Dataset_Loader:
 
 
 if __name__ == "__main__":
+
     loader = Corrupted_Dataset_Loader("Cyprien")
     dataset_missing = loader.load_corrupted_dataset(type='occlusion', save=True)
 
@@ -181,3 +189,13 @@ if __name__ == "__main__":
     plt.gca().add_patch(Rectangle((image_first_pixel[0], image_first_pixel[1]), image_path_size, image_path_size, linewidth=1, edgecolor='r', facecolor='none'))
 
     plt.show()
+
+    # base_path = "C:\\MVA\\1er Semestre\\G Data Analysis\\RPCA\\att_faces\\"
+    # num_people = 5
+    # num_images_per_person = 5
+    # X, y = load_images(base_path, num_people, num_images_per_person)
+    # loader = Corrupted_Dataset_Loader("Cyprien")
+    # loader._dataset_original = X
+    # loader._dataset_corrupted = loader._dataset_original.copy()
+    # dataset_missing = loader.load_corrupted_dataset(type='occlusion', save=True)
+    # X = dataset_missing

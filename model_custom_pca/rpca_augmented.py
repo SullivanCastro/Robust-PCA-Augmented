@@ -5,31 +5,66 @@ from scipy.sparse.csgraph import laplacian
 from sklearn.neighbors import kneighbors_graph
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import pairwise_distances
+import json
 
 
 
 class Robust_PCA_augmented():
 
-    def __init__(self, X, gamma=10) -> None:
-        self.X           = X
+    def __init__(self, M, gamma=0) -> None:
+        self.M           = M
         self.k           = 0
         self.gamma       = gamma
         self.r1          = 1
         self.r2          = 1
         self.epsilon     = 1e-7
-        self._lambda     = 1/np.sqrt(np.max(X.shape))
+        self._lambda     = 1/np.sqrt(np.max(M.shape))
         self.n_neighbors = 10
+        self.corruption  = False
+        self.corruption_type = 'occlusion'
 
-        self.laplacien = self.laplacian_computation(X)
+        self.laplacien = self.laplacian_computation(self.M)
 
-        self.L           = np.random.rand(*X.shape)
-        self.W           = np.random.rand(*X.shape)
-        self.S           = np.random.rand(*X.shape)
-        self.Z1          = X - self.L - self.S
+        self.L           = np.zeros(M.shape)
+        self.W           = np.zeros(M.shape)
+        self.S           = np.zeros(M.shape)
+        self.Z1          = self.M - self.L - self.S
         self.Z2          = self.W - self.L
         self.P1          = self._nulcear_norm(self.L)
         self.P2          = self._lambda * np.sum(np.abs(self.S))
         self.P3          = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+
+    def pairwaise_distance(self, X):
+        """
+        Compute the pairwise distance between the data points
+        When the corruption is set to occlusion
+        Then the occlusion is applied to the other data point in order to compute the pairwise distance
+
+        Parameters
+        ----------
+        X : np.array
+            Input data matrix
+        
+        Returns
+        -------
+        np.array
+            Pairwise distance matrix
+        """
+        O = np.zeros((X.shape[0], X.shape[0]))
+        annotation_dataset = json.load(open("C:\\MVA\\1er Semestre\\G Data Analysis\\RPCA\\Robust-PCA-Augmented\\Corrupted_Datasets\\occlusion\\Cyprien\\annotation.json"), "r")
+        if self.corruption_type == 'occlusion':
+            for i in range(X.shape[0]):
+                for j in range(X.shape[0]):
+                    image_first_pixel, image_patch_size = annotation_dataset[str(i)]
+                    image_first_pixel2, image_patch_size2 = annotation_dataset[str(j)]
+                    mask = np.ones((X.shape[1], X.shape[1]))
+                    mask[image_first_pixel[0]:image_first_pixel[0] + image_patch_size, image_first_pixel[1]:image_first_pixel[1] + image_patch_size] = 0
+                    mask[image_first_pixel2[0]:image_first_pixel2[0] + image_patch_size2, image_first_pixel2[1]:image_first_pixel2[1] + image_patch_size2] = 0
+
+                    O[i, j] = np.linalg.norm(mask * (X[i] - X[j]), 2) / np.sum(mask)
+        
+        return O
+
 
     def laplacian_computation(self, X):
         """
@@ -51,19 +86,22 @@ class Robust_PCA_augmented():
         # self.laplacien = laplacian(knn_weights_square, normed=False)
 
         # Manual technique to compute the laplacian matrix
-        # Not working, A is identity matrix at the end of the computation
+        if not self.corruption:
+            distances = pairwise_distances(X, metric='euclidean')
+        else:
+            distances = self.pairwaise_distance(X)
 
-        distances = pairwise_distances(X, metric='euclidean')
         nbrs = NearestNeighbors(n_neighbors=self.n_neighbors, algorithm='ball_tree').fit(X)
         _, indices = nbrs.kneighbors(X)
         A = np.zeros((X.shape[0], X.shape[0]))
+        omega = np.min(distances[distances != 0])
         for i in range(X.shape[0]):
             for j in indices[i]:
-                A[i, j] = np.exp(-distances[i, j] ** 2 / 0.05)
+                A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05)
             A = (A + A.T) / 2
         D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1) + 1e-10))
         self.laplacien = np.eye(X.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
-        
+
         return self.laplacien
 
     
@@ -105,8 +143,9 @@ class Robust_PCA_augmented():
             Proximal operator for nuclear norm
         """
 
-        U, S, V = svd(X, full_matrices=False)
-        return np.dot(U, np.dot(np.diag(self._prox_l1_operator(S, coeff)), V))
+        U, S, V = np.linalg.svd(X, full_matrices=False)
+        D = np.dot(U, np.dot(np.diag(self._prox_l1_operator(S, coeff)), V))
+        return D
 
     def _compute_L_next(self) -> np.array:    
         """
@@ -117,9 +156,10 @@ class Robust_PCA_augmented():
         np.array
             L matrix
         """
-        H1 = self.X - self.S + self.Z1 / self.r1
+        H1 = self.M - self.S + self.Z1 / self.r1
         H2 = self.W + self.Z2 / self.r2
-        return self._prox_nuclear_operator((self.r1 * H1 + self.r2 * H2) / (self.r1 + self.r2), 2 / (self.r1 + self.r2))
+        A = (self.r1 * H1 + self.r2 * H2) / (self.r1 + self.r2)
+        return self._prox_nuclear_operator(A, 1 / (self.r1 + self.r2))
     
     def _compute_W_next(self) -> np.array:
         """
@@ -141,7 +181,7 @@ class Robust_PCA_augmented():
         np.array
             S matrix
         """
-        return self._prox_l1_operator(self.X - self.L + self.Z1 / self.r1, self._lambda / self.r1)
+        return self._prox_l1_operator(self.M - self.L + self.Z1 / self.r1, self._lambda / self.r1)
     
     def stopping_criterion(self, P_prev, P_next):
         """
@@ -169,19 +209,19 @@ class Robust_PCA_augmented():
         P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
         Z1_prev, Z2_prev = self.Z1, self.Z2
         
-        while self.k < 1000 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
+        while self.k < 300 or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
             P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
             Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
             self.S = self._compute_S_next()
             self.W = self._compute_W_next()
-            self.Z1 += self.r1 * (self.X - self.L - self.S)
+            self.Z1 += self.r1 * (self.M - self.L - self.S)
             self.Z2 += self.r2 * (self.W - self.L)
             self.P1 = self._nulcear_norm(self.L)
             self.P2 = self._lambda * np.sum(np.abs(self.S))
             self.P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
             self.k += 1
-            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Z1: {self.Z1.shape}, Z2: {self.Z2.shape}")
+            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and L: {np.linalg.norm(self.S - self.L)}")
         return self.L, self.S
 
     def pca_predict(self, k, true_labels):
