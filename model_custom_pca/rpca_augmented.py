@@ -106,22 +106,25 @@ class Robust_PCA_augmented():
             distances = self.custom_pairwise_distance()
 
         A = np.zeros((self.M.shape[0], self.M.shape[0]))
-        omega = np.min(distances[distances > 0])
+        omega = np.min(distances[distances != 0])
         if self.knn == 0:
             for i in range(self.M.shape[0]):
                 for j in range(self.M.shape[0]):
-                    A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05)
+                    scale_factor = 1e-10
+                    A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05 * scale_factor)
         else:
+            nbrs = NearestNeighbors(n_neighbors=self.knn, algorithm='ball_tree').fit(self.M)
+            _, indices = nbrs.kneighbors(self.M)
             for i in range(self.M.shape[0]):
-                idx = np.argsort(distances[i])[:self.knn]
-                for j in idx:
-                    A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05)
+                for j in indices[i]:
+                    scale_factor = 1e-10
+                    A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05 * scale_factor)
 
-        A = (A + A.T) / 2
-        
         D = np.diag(np.sum(A, axis=1))
-        D_inv_sqrt = np.diag(1.0 / np.sqrt(np.diag(D) + 1e-10))
+        D_inv_sqrt = np.linalg.inv(np.sqrt(D))
         self.laplacien = np.eye(self.M.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
+        
+        # D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1) + 1e-10))
 
         return self.laplacien
 
@@ -227,12 +230,12 @@ class Robust_PCA_augmented():
             S matrix
         """
 
-        # P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
-        # Z1_prev, Z2_prev = self.Z1, self.Z2
+        P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
+        Z1_prev, Z2_prev = self.Z1, self.Z2
         
-        while self.k < self.nb_iter :
-            # P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
-            # Z1_prev, Z2_prev = self.Z1, self.Z2
+        while self.k < self.nb_iter or (np.square(self.P1 - P1_prev) / np.square(P1_prev) > self.epsilon and np.square(self.P2- P2_prev) / np.square(P2_prev) > self.epsilon and np.square(self.P3 - P3_prev) / np.square(P3_prev) > self.epsilon and self.stopping_criterion(self.Z1, Z1_prev) and self.stopping_criterion(self.Z2, Z2_prev)):
+            P1_prev, P2_prev, P3_prev = self.P1, self.P2, self.P3
+            Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
             self.S = self._compute_S_next()
             self.W = self._compute_W_next()
@@ -244,7 +247,7 @@ class Robust_PCA_augmented():
             temp = self.laplacien @ self.L
             self.P3 = self.gamma * np.sum(self.L * temp)
             self.k += 1
-            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and L: {np.linalg.norm(self.S - self.L)}")
+            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and original: {np.linalg.norm(self.S - self.L)}")
         
         return self.L, self.S
     
