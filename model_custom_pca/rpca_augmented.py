@@ -9,11 +9,11 @@ from sklearn.metrics import accuracy_score
 from scipy.optimize import linear_sum_assignment as hungarian
 import json
 from sklearn.preprocessing import StandardScaler
-
+from scipy.sparse.linalg import svds
 
 class Robust_PCA_augmented():
 
-    def __init__(self, M, corruption=False, annotation_path = None, gamma=10, nb_iter=100, knn=0) -> None:
+    def __init__(self, M, corruption=False, annotation_path = None, gamma=1e-3, nb_iter=100, knn=0) -> None:
         self.M           = M
         self.k           = 0
         self.gamma       = gamma
@@ -21,7 +21,7 @@ class Robust_PCA_augmented():
         self.r2          = 1
         self.annotation_path = annotation_path
         self.epsilon     = 1e-7
-        self._lambda     = 1/np.sqrt(np.max(M.shape))
+        self._lambda     = 1/(gamma * np.sqrt(np.max(M.shape)))
         self.corruption  = corruption
         self.nb_iter     = nb_iter
         self.corruption_type = 'occlusion'
@@ -29,14 +29,16 @@ class Robust_PCA_augmented():
 
         self.laplacien = self.laplacian_computation()
 
-        self.L           = np.zeros(M.shape)
-        self.W           = np.zeros(M.shape)
-        self.S           = np.zeros(M.shape)
+        init_array       = np.random.random(M.shape)
+        self.L           = init_array
+        self.W           = init_array
+        self.S           = init_array
         self.Z1          = self.M - self.L - self.S
         self.Z2          = self.W - self.L
         self.P1          = self._nulcear_norm(self.L)
         self.P2          = self._lambda * np.sum(np.abs(self.S))
-        self.P3          = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+        temp = self.laplacien @ self.L
+        self.P3 = self.gamma * np.sum(self.L * temp)
 
     def custom_pairwise_distance(self):
         """
@@ -121,7 +123,7 @@ class Robust_PCA_augmented():
                     A[i, j] = np.exp(-(distances[i, j] - omega) ** 2 / 0.05 * scale_factor)
 
         D = np.diag(np.sum(A, axis=1))
-        D_inv_sqrt = np.linalg.inv(np.sqrt(D))
+        D_inv_sqrt = np.linalg.inv(np.sqrt(D) + 1e-9)
         self.laplacien = np.eye(self.M.shape[0]) - D_inv_sqrt @ A @ D_inv_sqrt
         
         # D_inv_sqrt = np.diag(1.0 / np.sqrt(A.sum(axis=1) + 1e-10))
@@ -167,11 +169,12 @@ class Robust_PCA_augmented():
             Proximal operator for nuclear norm
         """
 
-        U, S, V = np.linalg.svd(X, full_matrices=False)
+        U, S, V = svds(X)
         D = np.dot(U, np.dot(np.diag(self._prox_l1_operator(S, coeff)), V))
         return D
 
-    def _compute_L_next(self) -> np.array:    
+
+    def _compute_L_next(self) -> np.array:
         """
         Compute the next L matrix
 
@@ -183,7 +186,11 @@ class Robust_PCA_augmented():
         H1 = self.M - self.S + self.Z1 / self.r1
         H2 = self.W + self.Z2 / self.r2
         A = (self.r1 * H1 + self.r2 * H2) / (self.r1 + self.r2)
-        return self._prox_nuclear_operator(A, 1 / (self.r1 + self.r2))
+        
+        U, Sigma, VT = svds(A)  # Truncated SVD
+        r = (self.r1 + self.r2) / 2
+        Sigma_thresholded = np.maximum(Sigma - 1 / r, 0)
+        return U @ np.diag(Sigma_thresholded) @ VT
     
     def _compute_W_next(self) -> np.array:
         """
@@ -205,6 +212,7 @@ class Robust_PCA_augmented():
         np.array
             S matrix
         """
+        # print(self._lambda / self.r1)
         return self._prox_l1_operator(self.M - self.L + self.Z1 / self.r1, self._lambda / self.r1)
     
     def stopping_criterion(self, P_prev, P_next):
@@ -238,16 +246,18 @@ class Robust_PCA_augmented():
             Z1_prev, Z2_prev = self.Z1, self.Z2
             self.L = self._compute_L_next()
             self.S = self._compute_S_next()
+            # break
             self.W = self._compute_W_next()
             self.Z1 += self.r1 * (self.M - self.L - self.S)
             self.Z2 += self.r2 * (self.W - self.L)
             self.P1 = self._nulcear_norm(self.L)
-            self.P2 = self._lambda * np.sum(np.abs(self.S))
+            self.P2 = self._lambda * np.linalg.norm(self.S, ord=1)
             # self.P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
             temp = self.laplacien @ self.L
             self.P3 = self.gamma * np.sum(self.L * temp)
             self.k += 1
-            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and original: {np.linalg.norm(self.S - self.L)}")
+            print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and L: {np.linalg.norm(self.S - self.L)}")
+            print(f"Iteration {self.k} - Difference between M and S+L: {np.linalg.norm(self.M - self.S - self.L)}")
         
         return self.L, self.S
     
@@ -272,7 +282,7 @@ class Robust_PCA_augmented():
         float
             Clustering error
         """
-        U, S, V = np.linalg.svd(self.L, full_matrices=False)
+        U, S, V = svds(self.L)
         cumulated_variance = np.cumsum(S**2) / np.sum(S**2)
         n_components = np.argmax(cumulated_variance > 0.95) + 1
 
