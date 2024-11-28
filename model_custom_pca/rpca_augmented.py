@@ -221,7 +221,9 @@ class Robust_PCA_augmented():
             self.Z2 += self.r2 * (self.W - self.L)
             self.P1 = self._nulcear_norm(self.L)
             self.P2 = self._lambda * np.sum(np.abs(self.S))
-            self.P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+            # self.P3 = self.gamma * np.trace(self.L.T @ self.laplacien @ self.L)
+            temp = self.laplacien @ self.L
+            self.P3 = self.gamma * np.sum(self.L * temp)
             self.k += 1
             print(f"Iteration {self.k} - P1: {self.P1} - P2: {self.P2} - P3: {self.P3}, Difference between S and L: {np.linalg.norm(self.S - self.L)}")
         return self.L, self.S
