@@ -73,4 +73,22 @@ This project implements several dimensionality reduction and data processing tec
    ```bash
    git clone https://github.com/username/repository.git
     ```
+2. Install the requirements
+   ```bash
+   pip install -r requirements.txt
+   ```
+---
+
+## Low Rank Recovery
+
+ 1. Load the dataset according to a time frame
+   ```python
+   VideoLoader.read_videos(video_name, time_interval=time_interval_you_want)
+   ```
+
+2. Apply the remove background method
+   ```python
+   # method_you_want is among 'rpca' and 'rpca_augmented'
+   VideoLoader.remove_background(method=method_you_want, dataset_name=video_name, plot=False)
+   ```
 
